@@ -1,0 +1,54 @@
+# ──────────────────────────────────────────
+# Backend (Laravel)
+# ──────────────────────────────────────────
+backend/vendor/
+backend/.env
+backend/.env.backup
+backend/.env.testing
+backend/storage/app/public/*
+!backend/storage/app/public/.gitkeep
+backend/storage/debugbar/
+backend/storage/logs/*
+!backend/storage/logs/.gitkeep
+backend/storage/framework/cache/*
+!backend/storage/framework/cache/.gitkeep
+backend/storage/framework/sessions/*
+!backend/storage/framework/sessions/.gitkeep
+backend/storage/framework/testing/*
+!backend/storage/framework/testing/.gitkeep
+backend/storage/framework/views/*
+!backend/storage/framework/views/.gitkeep
+backend/bootstrap/cache/*.php
+backend/public/storage
+backend/public/hot
+backend/.phpunit.result.cache
+
+# ──────────────────────────────────────────
+# Frontend (Vue / Vite)
+# ──────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ──────────────────────────────────────────
+# OS & Editor
+# ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ──────────────────────────────────────────
+# Misc
+# ──────────────────────────────────────────
+*.log
+*.zip
+*.tar.gz
