@@ -32,10 +32,10 @@
           <NavLink to="/materi" icon="📚" label="Materi" />
           <NavLink to="/transliterasi" icon="🔄" label="Transliterasi" />
           <NavLink to="/quiz" icon="✏️" label="Quiz" />
-          <NavLink to="/quiz/riwayat" icon="📊" label="Riwayat Quiz" />
+          <NavLink to="/quiz/riwayat" icon="📊" label="Hasil Quiz" />
         </template>
 
-        <template v-if="auth.isGuru || auth.isAdmin">
+        <template v-if="auth.isGuru">
           <NavDivider label="Manajemen" />
           <NavLink to="/kelola-materi" icon="📝" label="Kelola Materi" />
           <NavLink to="/bank-soal" icon="🗄️" label="Bank Soal" />

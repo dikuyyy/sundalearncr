@@ -16,7 +16,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'role_id', 'name', 'email', 'username', 'password',
-        'nisn', 'nip', 'phone', 'address', 'gender', 'is_active',
+        'nisn', 'nip', 'phone', 'address', 'gender', 'is_active', 'can_view_all',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -27,6 +27,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'can_view_all' => 'boolean',
         ];
     }
 
@@ -78,5 +79,14 @@ class User extends Authenticatable
     public function isSiswa(): bool
     {
         return $this->role->name === 'siswa';
+    }
+
+    /**
+     * Apakah user boleh melihat SEMUA data (bank soal, quiz, hasil siswa),
+     * bukan hanya milik sendiri. Admin selalu boleh; guru tergantung flag.
+     */
+    public function canViewAllData(): bool
+    {
+        return $this->isAdmin() || ($this->isGuru() && $this->can_view_all);
     }
 }

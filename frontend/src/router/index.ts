@@ -68,7 +68,7 @@ const router = createRouter({
           path: 'quiz/riwayat',
           name: 'quiz.history',
           component: () => import('@/pages/student/QuizHistoryPage.vue'),
-          meta: { title: 'Riwayat Quiz', role: 'siswa' },
+          meta: { title: 'Hasil Quiz', role: 'siswa' },
         },
         {
           path: 'quiz/hasil/:id',
@@ -140,6 +140,11 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
+
+  // Saat page refresh: token ada di localStorage tapi user belum di-load → fetch dulu
+  if (auth.token && !auth.user) {
+    await auth.fetchUser()
+  }
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return next({ name: 'login', query: { redirect: to.fullPath } })

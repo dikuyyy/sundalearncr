@@ -66,12 +66,13 @@ class AdminController extends Controller
     public function storeTeacher(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => ['required', Password::min(8)],
-            'nip'      => 'nullable|string|max:50',
-            'phone'    => 'nullable|string|max:20',
-            'gender'   => 'nullable|in:L,P',
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|email|unique:users,email',
+            'password'     => ['required', Password::min(8)],
+            'nip'          => 'nullable|string|max:50',
+            'phone'        => 'nullable|string|max:20',
+            'gender'       => 'nullable|in:L,P',
+            'can_view_all' => 'boolean',
         ]);
 
         $guruRole = Role::where('name', 'guru')->firstOrFail();
@@ -91,12 +92,13 @@ class AdminController extends Controller
         $teacher = User::whereHas('role', fn($q) => $q->where('name', 'guru'))->findOrFail($id);
 
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|unique:users,email,' . $id,
-            'nip'       => 'nullable|string|max:50',
-            'phone'     => 'nullable|string|max:20',
-            'gender'    => 'nullable|in:L,P',
-            'is_active' => 'boolean',
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|email|unique:users,email,' . $id,
+            'nip'          => 'nullable|string|max:50',
+            'phone'        => 'nullable|string|max:20',
+            'gender'       => 'nullable|in:L,P',
+            'is_active'    => 'boolean',
+            'can_view_all' => 'boolean',
         ]);
 
         $teacher->update($validated);

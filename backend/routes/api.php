@@ -88,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/quiz/start', [QuizController::class, 'start']);
     Route::post('/quiz/submit', [QuizController::class, 'submit']);
     Route::get('/quiz/history', [QuizController::class, 'history']);
+    Route::get('/quiz/results', [QuizController::class, 'allResults']);
     Route::get('/quiz/attempts/{id}/review', [QuizController::class, 'review']);
 
     // ─── Riwayat Transliterasi ───

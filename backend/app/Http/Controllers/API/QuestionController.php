@@ -17,14 +17,20 @@ class QuestionController extends Controller
     {
         $this->authorizeGuru();
 
-        $questions = Question::with('creator')
+        $query = Question::with('creator')
+            // Guru tanpa hak "lihat semua" hanya melihat soal buatannya sendiri
+            ->when(!auth()->user()->canViewAllData(), fn($q) => $q->where('created_by', auth()->id()))
             ->when($request->type, fn($q, $t) => $q->where('type', $t))
             ->when($request->difficulty, fn($q, $d) => $q->where('difficulty', $d))
             ->when($request->search, fn($q, $s) => $q->where('question_text', 'like', "%$s%"))
-            ->latest()
-            ->paginate(20);
+            ->latest();
 
-        return response()->json($questions);
+        // ?all=1 → kembalikan semua soal tanpa paginasi (mis. untuk pemilihan manual quiz)
+        if ($request->boolean('all')) {
+            return response()->json(['data' => $query->get()]);
+        }
+
+        return response()->json($query->paginate(20));
     }
 
     /**
@@ -117,12 +123,16 @@ class QuestionController extends Controller
     {
         $this->authorizeGuru();
 
+        // Guru tanpa hak "lihat semua" hanya menghitung soal buatannya sendiri
+        $scope = fn() => Question::query()
+            ->when(!auth()->user()->canViewAllData(), fn($q) => $q->where('created_by', auth()->id()));
+
         return response()->json([
             'data' => [
-                'total'      => Question::count(),
-                'by_type'    => Question::selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type'),
-                'by_difficulty' => Question::selectRaw('difficulty, count(*) as total')->groupBy('difficulty')->pluck('total', 'difficulty'),
-                'active'     => Question::active()->count(),
+                'total'      => $scope()->count(),
+                'by_type'    => $scope()->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type'),
+                'by_difficulty' => $scope()->selectRaw('difficulty, count(*) as total')->groupBy('difficulty')->pluck('total', 'difficulty'),
+                'active'     => $scope()->where('is_active', true)->count(),
             ],
         ]);
     }

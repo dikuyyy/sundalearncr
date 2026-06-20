@@ -34,6 +34,7 @@ export interface QuizSetting {
   duration_minutes: number
   difficulty: string
   creator: string
+  is_completed: boolean
 }
 
 export const useQuizStore = defineStore('quiz', () => {
@@ -100,6 +101,11 @@ export const useQuizStore = defineStore('quiz', () => {
     return data
   }
 
+  async function fetchAllResults() {
+    const { data } = await api.get('/quiz/results')
+    return data
+  }
+
   async function fetchReview(attemptId: number) {
     const { data } = await api.get(`/quiz/attempts/${attemptId}/review`)
     return data.data
@@ -141,7 +147,7 @@ export const useQuizStore = defineStore('quiz', () => {
 
   return {
     available, currentAttempt, lastResult, history, loading, error,
-    fetchAvailable, startQuiz, submitQuiz, fetchHistory, fetchReview,
+    fetchAvailable, startQuiz, submitQuiz, fetchHistory, fetchAllResults, fetchReview,
     fetchSettings, createSetting, updateSetting, deleteSetting,
     fetchTeacherStats, fetchStudentResults, clearAttempt,
   }

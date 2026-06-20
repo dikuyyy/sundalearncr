@@ -22,6 +22,7 @@
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Nama</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Email</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">NIP</th>
+              <th class="text-left px-4 py-3 text-gray-500 font-medium">Akses Data</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Aksi</th>
             </tr>
@@ -31,6 +32,11 @@
               <td class="px-4 py-3 font-medium text-gray-800">{{ t.name }}</td>
               <td class="px-4 py-3 text-gray-600">{{ t.email }}</td>
               <td class="px-4 py-3 text-gray-500">{{ t.nip || '-' }}</td>
+              <td class="px-4 py-3">
+                <span class="badge text-xs" :class="t.can_view_all ? 'badge-blue' : 'badge-yellow'">
+                  {{ t.can_view_all ? '🌐 Semua Data' : '🔒 Data Sendiri' }}
+                </span>
+              </td>
               <td class="px-4 py-3">
                 <span class="badge text-xs" :class="t.is_active ? 'badge-green' : 'badge-red'">
                   {{ t.is_active ? 'Aktif' : 'Nonaktif' }}
@@ -78,6 +84,18 @@
               <input v-model="form.phone" class="input-field" placeholder="Opsional" />
             </div>
           </div>
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <label class="flex items-start gap-2 cursor-pointer">
+              <input v-model="form.can_view_all" type="checkbox" class="w-4 h-4 rounded text-sunda-600 mt-0.5" />
+              <span class="text-sm text-gray-700">
+                <span class="font-medium">Akses semua data</span>
+                <span class="block text-xs text-gray-500 mt-0.5">
+                  Jika dicentang, guru bisa melihat <strong>semua</strong> bank soal, quiz, dan hasil siswa.
+                  Jika tidak, guru hanya melihat data dari quiz/soal yang ia buat sendiri.
+                </span>
+              </span>
+            </label>
+          </div>
           <div v-if="form.id">
             <label class="flex items-center gap-2 cursor-pointer">
               <input v-model="form.is_active" type="checkbox" class="w-4 h-4 rounded text-sunda-600" />
@@ -110,6 +128,7 @@ const search    = ref('')
 const emptyForm = () => ({
   id: null as number | null,
   name: '', email: '', password: '', nip: '', phone: '', is_active: true,
+  can_view_all: false,
 })
 const form = ref(emptyForm())
 

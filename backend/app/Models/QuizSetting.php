@@ -14,7 +14,8 @@ class QuizSetting extends Model
 
     protected $fillable = [
         'created_by', 'title', 'description', 'total_questions',
-        'duration_minutes', 'difficulty', 'shuffle_questions', 'shuffle_options', 'is_active',
+        'duration_minutes', 'difficulty', 'selection_mode', 'question_ids',
+        'shuffle_questions', 'shuffle_options', 'is_active',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class QuizSetting extends Model
             'is_active' => 'boolean',
             'total_questions' => 'integer',
             'duration_minutes' => 'integer',
+            'question_ids' => 'array',
         ];
     }
 

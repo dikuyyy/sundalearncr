@@ -72,7 +72,24 @@ class QuizRandomizerService
      */
     public function getRandomizedQuestions(QuizSetting $setting): array
     {
-        // Ambil soal berdasarkan tingkat kesulitan
+        // Mode MANUAL: gunakan daftar soal yang dipilih guru
+        if ($setting->selection_mode === 'manual' && !empty($setting->question_ids)) {
+            // Ambil hanya soal yang masih aktif, jaga urutan sesuai pilihan guru
+            $selected = Question::active()
+                ->whereIn('id', $setting->question_ids)
+                ->pluck('id')
+                ->toArray();
+
+            $questions = array_values(array_intersect($setting->question_ids, $selected));
+
+            if ($setting->shuffle_questions) {
+                $questions = $this->fisherYatesShuffle($questions);
+            }
+
+            return $questions;
+        }
+
+        // Mode RANDOM: ambil soal berdasarkan tingkat kesulitan
         $query = Question::active();
 
         if ($setting->difficulty !== 'campuran') {

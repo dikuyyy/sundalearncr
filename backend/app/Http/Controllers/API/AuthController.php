@@ -127,6 +127,7 @@ class AuthController extends Controller
             'address'  => $user->address,
             'gender'   => $user->gender,
             'is_active' => $user->is_active,
+            'can_view_all' => $user->can_view_all,
         ];
     }
 }

@@ -28,7 +28,7 @@ class QuizSettingSeeder extends Seeder
                 'description'       => 'Quiz tentang rarangken (tanda diakritik) dan angka Sunda.',
                 'total_questions'   => 10,
                 'duration_minutes'  => 20,
-                'difficulty'        => 'sedang',
+                'difficulty'        => 'campuran',
                 'shuffle_questions' => true,
                 'shuffle_options'   => true,
                 'is_active'         => true,

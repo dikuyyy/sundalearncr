@@ -27,7 +27,8 @@ class QuizController extends Controller
         $this->authorizeGuru();
 
         $settings = QuizSetting::with('creator')
-            ->where('created_by', auth()->id())
+            // Guru tanpa hak "lihat semua" hanya melihat quiz buatannya sendiri
+            ->when(!auth()->user()->canViewAllData(), fn($q) => $q->where('created_by', auth()->id()))
             ->latest()
             ->paginate(10);
 
@@ -42,26 +43,9 @@ class QuizController extends Controller
     {
         $this->authorizeGuru();
 
-        $validated = $request->validate([
-            'title'             => 'required|string|max:255',
-            'description'       => 'nullable|string',
-            'total_questions'   => 'required|integer|min:1|max:100',
-            'duration_minutes'  => 'required|integer|min:1|max:180',
-            'difficulty'        => 'required|in:mudah,sedang,sulit,campuran',
-            'shuffle_questions' => 'boolean',
-            'shuffle_options'   => 'boolean',
-            'is_active'         => 'boolean',
-        ]);
-
-        // Validasi: cukup soal tersedia untuk memenuhi permintaan
-        $availableCount = Question::active()
-            ->when($validated['difficulty'] !== 'campuran', fn($q) => $q->where('difficulty', $validated['difficulty']))
-            ->count();
-
-        if ($availableCount < $validated['total_questions']) {
-            return response()->json([
-                'message' => "Tidak cukup soal. Tersedia: $availableCount soal, diminta: {$validated['total_questions']} soal.",
-            ], 422);
+        $validated = $this->validateSettingsPayload($request);
+        if ($validated instanceof JsonResponse) {
+            return $validated;
         }
 
         $setting = QuizSetting::create([...$validated, 'created_by' => auth()->id()]);
@@ -81,20 +65,58 @@ class QuizController extends Controller
 
         $setting = QuizSetting::where('created_by', auth()->id())->findOrFail($id);
 
+        $validated = $this->validateSettingsPayload($request);
+        if ($validated instanceof JsonResponse) {
+            return $validated;
+        }
+
+        $setting->update($validated);
+
+        return response()->json(['message' => 'Pengaturan quiz diperbarui.', 'data' => $setting->fresh()]);
+    }
+
+    /**
+     * Validasi & normalisasi payload pengaturan quiz.
+     * Mendukung dua mode pemilihan soal: 'random' dan 'manual'.
+     *
+     * @return array|JsonResponse Data tervalidasi, atau JsonResponse 422 jika gagal.
+     */
+    private function validateSettingsPayload(Request $request): array|JsonResponse
+    {
         $validated = $request->validate([
             'title'             => 'required|string|max:255',
             'description'       => 'nullable|string',
-            'total_questions'   => 'required|integer|min:1|max:100',
             'duration_minutes'  => 'required|integer|min:1|max:180',
             'difficulty'        => 'required|in:mudah,sedang,sulit,campuran',
+            'selection_mode'    => 'required|in:random,manual',
+            'total_questions'   => 'required_if:selection_mode,random|integer|min:1|max:100',
+            'question_ids'      => 'required_if:selection_mode,manual|array|min:1',
+            'question_ids.*'    => 'integer|exists:questions,id',
             'shuffle_questions' => 'boolean',
             'shuffle_options'   => 'boolean',
             'is_active'         => 'boolean',
         ]);
 
-        $setting->update($validated);
+        if ($validated['selection_mode'] === 'manual') {
+            // Jumlah soal mengikuti banyaknya soal yang dipilih guru
+            $validated['total_questions'] = count($validated['question_ids']);
+        } else {
+            // Mode random tidak menyimpan daftar soal manual
+            $validated['question_ids'] = null;
 
-        return response()->json(['message' => 'Pengaturan quiz diperbarui.', 'data' => $setting->fresh()]);
+            // Pastikan stok soal cukup untuk memenuhi jumlah yang diminta
+            $availableCount = Question::active()
+                ->when($validated['difficulty'] !== 'campuran', fn($q) => $q->where('difficulty', $validated['difficulty']))
+                ->count();
+
+            if ($availableCount < $validated['total_questions']) {
+                return response()->json([
+                    'message' => "Tidak cukup soal. Tersedia: $availableCount soal, diminta: {$validated['total_questions']} soal.",
+                ], 422);
+            }
+        }
+
+        return $validated;
     }
 
     /**
@@ -117,6 +139,12 @@ class QuizController extends Controller
      */
     public function available(): JsonResponse
     {
+        // ID quiz yang sudah pernah diselesaikan siswa ini
+        $completedIds = QuizAttempt::where('user_id', auth()->id())
+            ->where('status', 'completed')
+            ->pluck('quiz_setting_id')
+            ->unique();
+
         $settings = QuizSetting::active()
             ->with('creator')
             ->get()
@@ -128,6 +156,7 @@ class QuizController extends Controller
                 'duration_minutes' => $s->duration_minutes,
                 'difficulty'      => $s->difficulty,
                 'creator'         => $s->creator->name,
+                'is_completed'    => $completedIds->contains($s->id),
             ]);
 
         return response()->json(['data' => $settings]);
@@ -145,18 +174,11 @@ class QuizController extends Controller
 
         $setting = QuizSetting::active()->findOrFail($request->quiz_setting_id);
 
-        // Cek apakah ada attempt yang sedang berjalan
-        $existing = QuizAttempt::where('user_id', auth()->id())
+        // Bersihkan sesi yang belum selesai agar selalu mulai dengan set soal baru
+        QuizAttempt::where('user_id', auth()->id())
             ->where('quiz_setting_id', $setting->id)
             ->where('status', 'in_progress')
-            ->first();
-
-        if ($existing) {
-            return response()->json([
-                'message' => 'Anda memiliki sesi quiz yang belum selesai.',
-                'attempt_id' => $existing->id,
-            ]);
-        }
+            ->delete();
 
         // Gunakan Fisher-Yates Shuffle untuk mengacak soal
         $questionIds = $this->randomizer->getRandomizedQuestions($setting);
@@ -210,7 +232,14 @@ class QuizController extends Controller
             foreach ($request->answers as $answerData) {
                 $question   = Question::findOrFail($answerData['question_id']);
                 $userAnswer = trim($answerData['answer']);
-                $isCorrect  = mb_strtolower($userAnswer) === mb_strtolower($question->correct_answer);
+
+                // Pilihan ganda: correct_answer berupa kunci (a-d). Bandingkan
+                // berdasarkan NILAI opsi agar tetap benar walau opsi diacak.
+                $correctAnswer = $question->type === 'multiple_choice'
+                    ? ($question->options[$question->correct_answer] ?? $question->correct_answer)
+                    : $question->correct_answer;
+
+                $isCorrect = mb_strtolower($userAnswer) === mb_strtolower($correctAnswer);
 
                 QuizAnswer::create([
                     'quiz_attempt_id'   => $attempt->id,
@@ -232,7 +261,7 @@ class QuizController extends Controller
                 'wrong_answers'     => $wrong,
                 'score'             => $score,
                 'finished_at'       => now(),
-                'time_spent_seconds' => now()->diffInSeconds($attempt->started_at),
+                'time_spent_seconds' => (int) abs($attempt->started_at->diffInSeconds(now())),
                 'status'            => 'completed',
             ]);
         });
@@ -266,6 +295,42 @@ class QuizController extends Controller
     }
 
     /**
+     * GET /api/quiz/results
+     * Hasil quiz SEMUA siswa — dapat diakses oleh siswa.
+     * Baris milik siswa yang sedang login ditandai dengan is_mine = true.
+     */
+    public function allResults(): JsonResponse
+    {
+        $attempts = QuizAttempt::with(['user', 'quizSetting'])
+            ->where('status', 'completed')
+            ->latest('finished_at')
+            ->get();
+
+        $results = $attempts->map(fn($a) => [
+            'id'                 => $a->id,
+            'quiz_id'            => $a->quiz_setting_id,
+            'user_name'          => $a->user?->name,
+            'quiz_title'         => $a->quizSetting?->title,
+            'score'              => $a->score,
+            'correct_answers'    => $a->correct_answers,
+            'wrong_answers'      => $a->wrong_answers,
+            'time_spent_seconds' => $a->time_spent_seconds,
+            'finished_at'        => $a->finished_at,
+            'is_mine'            => $a->user_id === auth()->id(),
+        ]);
+
+        return response()->json([
+            'stats' => [
+                'total_attempts' => $attempts->count(),
+                'average_score'  => round($attempts->avg('score') ?? 0, 2),
+                'highest_score'  => $attempts->max('score') ?? 0,
+                'lowest_score'   => $attempts->min('score') ?? 0,
+            ],
+            'data' => $results,
+        ]);
+    }
+
+    /**
      * GET /api/quiz/attempts/{id}/review
      * Detail review jawaban setelah quiz selesai.
      */
@@ -283,7 +348,10 @@ class QuizController extends Controller
                 'answers'  => $attempt->answers->map(fn($a) => [
                     'question'      => $a->question->question_text,
                     'user_answer'   => $a->user_answer,
-                    'correct_answer' => $a->question->correct_answer,
+                    // Pilihan ganda: tampilkan NILAI opsi yang benar, bukan kunci (a-d)
+                    'correct_answer' => $a->question->type === 'multiple_choice'
+                        ? ($a->question->options[$a->question->correct_answer] ?? $a->question->correct_answer)
+                        : $a->question->correct_answer,
                     'is_correct'    => $a->is_correct,
                     'explanation'   => $a->question->explanation,
                 ]),
@@ -301,7 +369,9 @@ class QuizController extends Controller
     {
         $this->authorizeGuru();
 
-        $settingIds = QuizSetting::where('created_by', auth()->id())->pluck('id');
+        $settingIds = QuizSetting::query()
+            ->when(!auth()->user()->canViewAllData(), fn($q) => $q->where('created_by', auth()->id()))
+            ->pluck('id');
 
         $attempts = QuizAttempt::whereIn('quiz_setting_id', $settingIds)
             ->where('status', 'completed');
@@ -325,15 +395,29 @@ class QuizController extends Controller
     {
         $this->authorizeGuru();
 
-        $settingIds = QuizSetting::where('created_by', auth()->id())->pluck('id');
+        $settingIds = QuizSetting::query()
+            ->when(!auth()->user()->canViewAllData(), fn($q) => $q->where('created_by', auth()->id()))
+            ->pluck('id');
 
-        $results = QuizAttempt::with(['user', 'quizSetting'])
+        $attempts = QuizAttempt::with(['user', 'quizSetting'])
             ->whereIn('quiz_setting_id', $settingIds)
             ->where('status', 'completed')
-            ->latest()
-            ->paginate(20);
+            ->latest('finished_at')
+            ->get();
 
-        return response()->json($results);
+        $results = $attempts->map(fn($a) => [
+            'id'                 => $a->id,
+            'quiz_id'            => $a->quiz_setting_id,
+            'user_name'          => $a->user?->name,
+            'quiz_title'         => $a->quizSetting?->title,
+            'score'              => $a->score,
+            'correct_answers'    => $a->correct_answers,
+            'wrong_answers'      => $a->wrong_answers,
+            'time_spent_seconds' => $a->time_spent_seconds,
+            'finished_at'        => $a->finished_at,
+        ]);
+
+        return response()->json(['data' => $results]);
     }
 
     // ─────────────────────── Helpers ───────────────────────

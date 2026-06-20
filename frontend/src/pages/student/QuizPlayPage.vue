@@ -254,11 +254,19 @@ async function handleSubmit() {
   showConfirm.value = false
   if (!attempt.value) return
 
-  const payload = attempt.value.questions.map((q) => ({
-    question_id: q.id,
-    answer: answers.value[q.id] ?? '',
-    time_spent: 0,
-  }))
+  const payload = attempt.value.questions.map((q) => {
+    let answer = answers.value[q.id] ?? ''
+    // Pilihan ganda: answers menyimpan kunci (a-d). Kirim NILAI opsi yang dipilih
+    // agar penilaian tetap benar meski opsi diacak.
+    if (q.type === 'multiple_choice' && answer) {
+      answer = q.options?.[answer] ?? answer
+    }
+    return {
+      question_id: q.id,
+      answer,
+      time_spent: 0,
+    }
+  })
 
   const result = await quiz.submitQuiz(attempt.value.attempt_id, payload)
   resultData.value = result

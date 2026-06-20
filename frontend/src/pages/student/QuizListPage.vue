@@ -18,7 +18,10 @@
         <!-- Difficulty Badge -->
         <div class="flex items-start justify-between mb-4">
           <div class="w-12 h-12 bg-sunda-100 rounded-xl flex items-center justify-center text-2xl">✏️</div>
-          <span class="badge" :class="difficultyBadge(q.difficulty)">{{ q.difficulty }}</span>
+          <div class="flex items-center gap-2">
+            <span v-if="q.is_completed" class="badge badge-green">✓ Selesai</span>
+            <span class="badge" :class="difficultyBadge(q.difficulty)">{{ q.difficulty }}</span>
+          </div>
         </div>
 
         <h3 class="font-semibold text-gray-900">{{ q.title }}</h3>
@@ -31,11 +34,18 @@
         <p class="text-xs text-gray-400 mt-1">Dibuat oleh: {{ q.creator }}</p>
 
         <button
+          v-if="q.is_completed"
+          disabled
+          class="btn-primary w-full mt-4 opacity-50 cursor-not-allowed"
+        >
+          ✓ Quiz Selesai
+        </button>
+        <button
+          v-else
           @click="startQuiz(q.id)"
-          :disabled="starting === q.id"
           class="btn-primary w-full mt-4"
         >
-          {{ starting === q.id ? '⏳ Memulai...' : '🚀 Mulai Quiz' }}
+          🚀 Mulai Quiz
         </button>
       </div>
     </div>
@@ -48,13 +58,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '@/stores/quiz'
 
-const quiz    = useQuizStore()
-const router  = useRouter()
-const starting = ref<number | null>(null)
+const quiz   = useQuizStore()
+const router = useRouter()
 
 const difficultyBadge = (d: string) => ({
   mudah:    'badge-green',
@@ -63,16 +72,10 @@ const difficultyBadge = (d: string) => ({
   campuran: 'badge-blue',
 }[d] ?? 'badge')
 
-async function startQuiz(id: number) {
-  starting.value = id
-  try {
-    const attempt = await quiz.startQuiz(id)
-    router.push({ name: 'quiz.start', params: { id }, query: { attempt: attempt.attempt_id } })
-  } catch {
-    // Error sudah ditangani di store
-  } finally {
-    starting.value = null
-  }
+// Langsung navigasi ke halaman quiz — proses "start" ditangani di QuizPlayPage
+function startQuiz(id: number) {
+  quiz.clearAttempt()
+  router.push({ name: 'quiz.start', params: { id } })
 }
 
 onMounted(() => quiz.fetchAvailable())
