@@ -77,18 +77,12 @@ const router = createRouter({
           meta: { title: 'Hasil Quiz' },
         },
 
-        // ─── Guru: Bank Soal ───
+        // ─── Guru: Kelola Soal (gabungan Bank Soal + Pengaturan Quiz) ───
         {
-          path: 'bank-soal',
-          name: 'banksoal.index',
-          component: () => import('@/pages/teacher/BankSoalPage.vue'),
-          meta: { title: 'Bank Soal', role: 'guru' },
-        },
-        {
-          path: 'pengaturan-quiz',
-          name: 'quiz.settings',
-          component: () => import('@/pages/teacher/QuizSettingsPage.vue'),
-          meta: { title: 'Pengaturan Quiz', role: 'guru' },
+          path: 'kelola-soal',
+          name: 'kelola.soal',
+          component: () => import('@/pages/teacher/KelolaSoalPage.vue'),
+          meta: { title: 'Kelola Soal', role: 'guru' },
         },
         {
           path: 'hasil-siswa',

@@ -38,8 +38,7 @@
         <template v-if="auth.isGuru">
           <NavDivider label="Manajemen" />
           <NavLink to="/kelola-materi" icon="📝" label="Kelola Materi" />
-          <NavLink to="/bank-soal" icon="🗄️" label="Bank Soal" />
-          <NavLink to="/pengaturan-quiz" icon="⚙️" label="Pengaturan Quiz" />
+          <NavLink to="/kelola-soal" icon="🗄️" label="Kelola Soal" />
           <NavLink to="/hasil-siswa" icon="📈" label="Hasil Siswa" />
         </template>
 
