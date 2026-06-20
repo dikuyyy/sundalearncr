@@ -37,7 +37,8 @@
 
         <template v-if="auth.isGuru || auth.isAdmin">
           <NavDivider label="Manajemen" />
-          <!-- Sementara disembunyikan: <NavLink to="/kelola-materi" icon="📝" label="Kelola Materi" /> -->
+          <!-- Kelola Materi hanya untuk admin (disembunyikan dari guru) -->
+          <NavLink v-if="auth.isAdmin" to="/kelola-materi" icon="📝" label="Kelola Materi" />
           <NavLink to="/kelola-soal" icon="🗄️" label="Kelola Soal" />
           <NavLink to="/hasil-siswa" icon="📈" label="Hasil Siswa" />
         </template>
