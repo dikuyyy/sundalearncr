@@ -108,7 +108,10 @@
             <textarea
               id="form-question"
               v-model="form.question_text"
-              :class="form.type === 'sunda_to_latin' ? 'font-sunda text-xl' : ''"
+              @focus="mcField = 'question'"
+              :class="form.type === 'sunda_to_latin'
+                ? 'font-sunda text-xl'
+                : (form.type === 'multiple_choice' ? 'font-sunda text-lg' : '')"
               class="input-field min-h-[80px]"
               :placeholder="form.type === 'sunda_to_latin' ? 'Tulis aksara Sunda...' : 'Tulis pertanyaan...'"
             />
@@ -142,14 +145,24 @@
           <!-- Opsi Pilihan Ganda -->
           <div v-if="form.type === 'multiple_choice'" class="space-y-2">
             <p class="text-sm font-medium text-gray-700">Pilihan Jawaban (A-D)</p>
-            <div v-for="key in ['a', 'b', 'c', 'd']" :key="key" class="flex gap-2 items-center">
+            <div v-for="key in optionKeys" :key="key" class="flex gap-2 items-center">
               <label :for="`form-option-${key}`" class="w-6 font-bold text-gray-500">{{ key.toUpperCase() }}</label>
               <input
                 :id="`form-option-${key}`"
                 v-model="form.options[key]"
-                class="input-field"
+                @focus="mcField = key"
+                class="input-field font-sunda text-lg"
                 :placeholder="`Pilihan ${key.toUpperCase()}`"
               />
+            </div>
+
+            <!-- Keyboard aksara Sunda untuk pertanyaan & opsi pilihan ganda -->
+            <div class="mt-2">
+              <p class="text-xs text-gray-500 mb-1">
+                Keyboard mengisi ke: <strong class="text-sunda-700">{{ mcFieldLabel }}</strong>
+                — klik kolom pertanyaan/pilihan yang ingin diisi, lalu ketik aksara.
+              </p>
+              <SundaKeyboard @insert="mcInsert" @backspace="mcBackspace" @clear="mcClear" />
             </div>
           </div>
 
@@ -198,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 import SundaKeyboard from '@/components/keyboard/SundaKeyboard.vue'
 
@@ -210,6 +223,25 @@ const formError              = ref<string | null>(null)
 const showExplanationKeyboard = ref(false)
 const filterType  = ref('')
 const filterDiff  = ref('')
+
+// Field tujuan keyboard saat tipe Pilihan Ganda: 'question' atau salah satu opsi 'a'-'d'
+const optionKeys = ['a', 'b', 'c', 'd'] as const
+const mcField = ref<'question' | 'a' | 'b' | 'c' | 'd'>('a')
+const mcFieldLabel = computed(() =>
+  mcField.value === 'question' ? 'Pertanyaan' : `Pilihan ${mcField.value.toUpperCase()}`
+)
+function mcInsert(char: string) {
+  if (mcField.value === 'question') form.value.question_text += char
+  else form.value.options[mcField.value] += char
+}
+function mcBackspace() {
+  if (mcField.value === 'question') form.value.question_text = form.value.question_text.slice(0, -1)
+  else form.value.options[mcField.value] = form.value.options[mcField.value].slice(0, -1)
+}
+function mcClear() {
+  if (mcField.value === 'question') form.value.question_text = ''
+  else form.value.options[mcField.value] = ''
+}
 
 const emptyForm = () => ({
   id: null as number | null,
@@ -226,6 +258,7 @@ const form = ref(emptyForm())
 function openModal(q?: any) {
   formError.value = null
   showExplanationKeyboard.value = false
+  mcField.value = 'a'
   if (q) {
     form.value = {
       id: q.id,
