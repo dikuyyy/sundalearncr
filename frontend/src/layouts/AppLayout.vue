@@ -37,7 +37,7 @@
 
         <template v-if="auth.isGuru || auth.isAdmin">
           <NavDivider label="Manajemen" />
-          <NavLink to="/kelola-materi" icon="📝" label="Kelola Materi" />
+          <!-- Sementara disembunyikan: <NavLink to="/kelola-materi" icon="📝" label="Kelola Materi" /> -->
           <NavLink to="/kelola-soal" icon="🗄️" label="Kelola Soal" />
           <NavLink to="/hasil-siswa" icon="📈" label="Hasil Siswa" />
         </template>
