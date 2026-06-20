@@ -35,7 +35,7 @@
           <NavLink to="/quiz/riwayat" icon="📊" label="Hasil Quiz" />
         </template>
 
-        <template v-if="auth.isGuru">
+        <template v-if="auth.isGuru || auth.isAdmin">
           <NavDivider label="Manajemen" />
           <NavLink to="/kelola-materi" icon="📝" label="Kelola Materi" />
           <NavLink to="/kelola-soal" icon="🗄️" label="Kelola Soal" />
