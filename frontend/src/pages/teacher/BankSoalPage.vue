@@ -43,7 +43,7 @@
               <td colspan="6" class="text-center py-8 text-gray-400">Memuat...</td>
             </tr>
             <tr v-for="(q, i) in questions" :key="q.id" class="hover:bg-gray-50">
-              <td class="px-4 py-3 text-gray-500">{{ i + 1 }}</td>
+              <td class="px-4 py-3 text-gray-500">{{ (page - 1) * perPage + i + 1 }}</td>
               <td class="px-4 py-3 max-w-xs">
                 <span
                   class="text-gray-800 line-clamp-2 block"
@@ -192,6 +192,7 @@ const filterDiff  = ref('')
 const page        = ref(1)
 const lastPage    = ref(1)
 const total       = ref(0)
+const perPage     = ref(10)
 
 // Keyboard mengikuti field yang sedang fokus (pertanyaan, jawaban, opsi, atau penjelasan)
 const optionKeys = ['a', 'b', 'c', 'd'] as const
@@ -265,6 +266,7 @@ async function fetchQuestions() {
   questions.value = data.data ?? []
   lastPage.value  = data.last_page ?? 1
   total.value     = data.total ?? 0
+  perPage.value   = data.per_page ?? 10
   loading.value   = false
 }
 

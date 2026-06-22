@@ -319,8 +319,12 @@ async function saveSetting() {
 
 async function deleteSetting(id: number) {
   if (!confirm('Hapus pengaturan quiz ini?')) return
-  await quiz.deleteSetting(id)
-  fetchSettings()
+  try {
+    await quiz.deleteSetting(id)
+    fetchSettings()
+  } catch (e: any) {
+    alert(e.response?.data?.message ?? 'Gagal menghapus quiz.')
+  }
 }
 
 const typeLabel = (t: string) => ({ sunda_to_latin: 'Sunda→Latin', latin_to_sunda: 'Latin→Sunda', multiple_choice: 'Pilihan Ganda' }[t] ?? t)

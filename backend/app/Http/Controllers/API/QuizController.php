@@ -63,7 +63,10 @@ class QuizController extends Controller
     {
         $this->authorizeGuru();
 
-        $setting = QuizSetting::where('created_by', auth()->id())->findOrFail($id);
+        $setting = QuizSetting::when(
+            !auth()->user()->canViewAllData(),
+            fn($q) => $q->where('created_by', auth()->id())
+        )->findOrFail($id);
 
         $validated = $this->validateSettingsPayload($request);
         if ($validated instanceof JsonResponse) {
@@ -126,7 +129,10 @@ class QuizController extends Controller
     {
         $this->authorizeGuru();
 
-        QuizSetting::where('created_by', auth()->id())->findOrFail($id)->delete();
+        QuizSetting::when(
+            !auth()->user()->canViewAllData(),
+            fn($q) => $q->where('created_by', auth()->id())
+        )->findOrFail($id)->delete();
 
         return response()->json(['message' => 'Pengaturan quiz dihapus.']);
     }
