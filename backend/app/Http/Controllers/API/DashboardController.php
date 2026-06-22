@@ -46,13 +46,16 @@ class DashboardController extends Controller
 
     private function guruDashboard(User $user): JsonResponse
     {
-        $settingIds = QuizSetting::where('created_by', $user->id)->pluck('id');
+        $canViewAll = $user->canViewAllData();
+
+        $settingIds = QuizSetting::when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
+            ->pluck('id');
 
         $attempts = QuizAttempt::whereIn('quiz_setting_id', $settingIds)
             ->where('status', 'completed');
 
         // Grafik hasil quiz: rata-rata skor per quiz
-        $quizGraph = QuizSetting::where('created_by', $user->id)
+        $quizGraph = QuizSetting::when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
             ->withCount(['attempts as completed_count' => fn($q) => $q->where('status', 'completed')])
             ->withAvg(['attempts as avg_score' => fn($q) => $q->where('status', 'completed')], 'score')
             ->get()
@@ -65,8 +68,8 @@ class DashboardController extends Controller
         return response()->json([
             'role' => 'guru',
             'stats' => [
-                'total_soal'      => Question::where('created_by', $user->id)->count(),
-                'total_quiz'      => QuizSetting::where('created_by', $user->id)->count(),
+                'total_soal'      => Question::when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))->count(),
+                'total_quiz'      => QuizSetting::when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))->count(),
                 'total_percobaan' => $attempts->count(),
                 'rata_nilai'      => round($attempts->avg('score') ?? 0, 1),
                 'nilai_tertinggi' => $attempts->max('score') ?? 0,
@@ -80,12 +83,12 @@ class DashboardController extends Controller
                 ->take(10)
                 ->get()
                 ->map(fn($a) => [
-                    'siswa'     => $a->user->name,
-                    'quiz'      => $a->quizSetting->title,
-                    'skor'      => $a->score,
-                    'benar'     => $a->correct_answers,
-                    'salah'     => $a->wrong_answers,
-                    'selesai'   => $a->finished_at?->format('d/m/Y H:i'),
+                    'siswa'   => $a->user->name,
+                    'quiz'    => $a->quizSetting->title,
+                    'skor'    => $a->score,
+                    'benar'   => $a->correct_answers,
+                    'salah'   => $a->wrong_answers,
+                    'tanggal' => $a->finished_at?->format('d/m/Y H:i'),
                 ]),
         ]);
     }
