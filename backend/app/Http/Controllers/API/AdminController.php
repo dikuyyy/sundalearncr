@@ -55,7 +55,7 @@ class AdminController extends Controller
             ->when($request->search, fn($q, $s) => $q->where(function ($q) use ($s) {
                 $q->where('name', 'like', "%$s%")->orWhere('email', 'like', "%$s%");
             }))
-            ->paginate(15);
+            ->paginate(10);
 
         return response()->json($teachers);
     }
@@ -129,7 +129,7 @@ class AdminController extends Controller
             ->when($request->search, fn($q, $s) => $q->where(function ($q) use ($s) {
                 $q->where('name', 'like', "%$s%")->orWhere('nisn', 'like', "%$s%");
             }))
-            ->paginate(15);
+            ->paginate(10);
 
         return response()->json($students);
     }

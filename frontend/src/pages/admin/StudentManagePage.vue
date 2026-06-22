@@ -46,6 +46,8 @@
       </div>
     </div>
 
+    <Pagination :current-page="page" :last-page="lastPage" :total="total" @change="goPage" />
+
     <!-- Modal -->
     <div v-if="modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
@@ -96,14 +98,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import api from '@/api/axios'
+import Pagination from '@/components/common/Pagination.vue'
 
 const students  = ref<any[]>([])
 const modal     = ref(false)
 const saving    = ref(false)
 const formError = ref<string | null>(null)
 const search    = ref('')
+const page      = ref(1)
+const lastPage  = ref(1)
+const total     = ref(0)
 
 const emptyForm = () => ({
   id: null as number | null,
@@ -112,9 +118,28 @@ const emptyForm = () => ({
 const form = ref(emptyForm())
 
 async function fetchStudents() {
-  const { data } = await api.get('/admin/students', { params: { search: search.value || undefined } })
+  const { data } = await api.get('/admin/students', {
+    params: { search: search.value || undefined, page: page.value },
+  })
   students.value = data.data ?? []
+  lastPage.value = data.last_page ?? 1
+  total.value    = data.total ?? 0
 }
+
+function goPage(p: number) {
+  page.value = p
+  fetchStudents()
+}
+
+// Pencarian: kembali ke halaman 1 lalu muat ulang (debounce 300ms)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    fetchStudents()
+  }, 300)
+})
 
 function openModal(s?: any) {
   formError.value = null
@@ -128,12 +153,14 @@ async function save() {
   try {
     const payload = { ...form.value }
     if (!payload.password) delete (payload as any).password
+    const isNew = !form.value.id
     if (form.value.id) {
       await api.put(`/admin/students/${form.value.id}`, payload)
     } else {
       await api.post('/admin/students', payload)
     }
     modal.value = false
+    if (isNew) page.value = 1 // siswa baru tampil di halaman pertama (urutan terbaru)
     fetchStudents()
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan data siswa.'
@@ -145,6 +172,8 @@ async function save() {
 async function remove(id: number) {
   if (!confirm('Hapus siswa ini?')) return
   await api.delete(`/admin/students/${id}`)
+  // jika item terakhir di halaman ini dihapus, mundur satu halaman
+  if (students.value.length === 1 && page.value > 1) page.value--
   fetchStudents()
 }
 

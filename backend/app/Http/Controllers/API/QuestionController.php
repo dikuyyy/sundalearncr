@@ -30,7 +30,7 @@ class QuestionController extends Controller
             return response()->json(['data' => $query->get()]);
         }
 
-        return response()->json($query->paginate(20));
+        return response()->json($query->paginate(10));
     }
 
     /**

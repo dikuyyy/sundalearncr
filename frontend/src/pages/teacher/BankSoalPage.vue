@@ -76,6 +76,8 @@
       </div>
     </div>
 
+    <Pagination :current-page="page" :last-page="lastPage" :total="total" @change="goPage" />
+
     <!-- Modal Tambah/Edit Soal -->
     <div v-if="modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
@@ -108,20 +110,10 @@
             <textarea
               id="form-question"
               v-model="form.question_text"
-              @focus="mcField = 'question'"
-              :class="form.type === 'sunda_to_latin'
-                ? 'font-sunda text-xl'
-                : (form.type === 'multiple_choice' ? 'font-sunda text-lg' : '')"
-              class="input-field min-h-[80px]"
+              @focus="kbField = 'question'"
+              class="input-field min-h-[80px] font-sunda text-lg"
               :placeholder="form.type === 'sunda_to_latin' ? 'Tulis aksara Sunda...' : 'Tulis pertanyaan...'"
             />
-            <div v-if="form.type === 'sunda_to_latin'" class="mt-2">
-              <SundaKeyboard
-                @insert="form.question_text += $event"
-                @backspace="form.question_text = form.question_text.slice(0, -1)"
-                @clear="form.question_text = ''"
-              />
-            </div>
           </div>
 
           <div>
@@ -129,17 +121,10 @@
             <input
               id="form-answer"
               v-model="form.correct_answer"
-              :class="form.type === 'latin_to_sunda' ? 'font-sunda text-xl' : ''"
-              class="input-field"
+              @focus="kbField = 'answer'"
+              class="input-field font-sunda text-lg"
               :placeholder="form.type === 'latin_to_sunda' ? 'Tulis aksara Sunda...' : 'Jawaban yang benar'"
             />
-            <div v-if="form.type === 'latin_to_sunda'" class="mt-2">
-              <SundaKeyboard
-                @insert="form.correct_answer += $event"
-                @backspace="form.correct_answer = form.correct_answer.slice(0, -1)"
-                @clear="form.correct_answer = ''"
-              />
-            </div>
           </div>
 
           <!-- Opsi Pilihan Ganda -->
@@ -150,50 +135,31 @@
               <input
                 :id="`form-option-${key}`"
                 v-model="form.options[key]"
-                @focus="mcField = key"
+                @focus="kbField = key"
                 class="input-field font-sunda text-lg"
                 :placeholder="`Pilihan ${key.toUpperCase()}`"
               />
             </div>
-
-            <!-- Keyboard aksara Sunda untuk pertanyaan & opsi pilihan ganda -->
-            <div class="mt-2">
-              <p class="text-xs text-gray-500 mb-1">
-                Keyboard mengisi ke: <strong class="text-sunda-700">{{ mcFieldLabel }}</strong>
-                — klik kolom pertanyaan/pilihan yang ingin diisi, lalu ketik aksara.
-              </p>
-              <SundaKeyboard @insert="mcInsert" @backspace="mcBackspace" @clear="mcClear" />
-            </div>
           </div>
 
           <div>
-            <div class="flex items-center justify-between mb-1">
-              <label for="form-explanation" class="block text-sm font-medium text-gray-700">Penjelasan (Opsional)</label>
-              <button
-                type="button"
-                @click="showExplanationKeyboard = !showExplanationKeyboard"
-                class="text-xs px-2 py-1 rounded-md border transition-colors"
-                :class="showExplanationKeyboard
-                  ? 'bg-sunda-50 border-sunda-300 text-sunda-700'
-                  : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-sunda-300 hover:text-sunda-600'"
-              >
-                ᮊ Aksara Sunda
-              </button>
-            </div>
+            <label for="form-explanation" class="block text-sm font-medium text-gray-700 mb-1">Penjelasan (Opsional)</label>
             <textarea
               id="form-explanation"
               v-model="form.explanation"
-              class="input-field min-h-[60px]"
-              :class="showExplanationKeyboard ? 'font-sunda text-base' : ''"
+              @focus="kbField = 'explanation'"
+              class="input-field min-h-[60px] font-sunda"
               placeholder="Penjelasan jawaban... (boleh campuran Latin & aksara Sunda)"
             />
-            <div v-if="showExplanationKeyboard" class="mt-2">
-              <SundaKeyboard
-                @insert="form.explanation += $event"
-                @backspace="form.explanation = form.explanation.slice(0, -1)"
-                @clear="form.explanation = ''"
-              />
-            </div>
+          </div>
+
+          <!-- Keyboard Aksara Sunda — mengikuti kolom yang sedang dipilih -->
+          <div>
+            <p class="text-xs text-gray-500 mb-1">
+              ⌨️ Keyboard mengisi ke: <strong class="text-sunda-700">{{ kbFieldLabel }}</strong>
+              — klik kolom yang ingin diisi, lalu ketik aksara.
+            </p>
+            <SundaKeyboard @insert="kbInsert" @backspace="kbBackspace" @clear="kbClear" />
           </div>
 
           <div v-if="formError" class="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded text-sm">{{ formError }}</div>
@@ -211,37 +177,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import SundaKeyboard from '@/components/keyboard/SundaKeyboard.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const questions              = ref<any[]>([])
 const loading                = ref(true)
 const modal                  = ref(false)
 const saving                 = ref(false)
 const formError              = ref<string | null>(null)
-const showExplanationKeyboard = ref(false)
 const filterType  = ref('')
 const filterDiff  = ref('')
+const page        = ref(1)
+const lastPage    = ref(1)
+const total       = ref(0)
 
-// Field tujuan keyboard saat tipe Pilihan Ganda: 'question' atau salah satu opsi 'a'-'d'
+// Keyboard mengikuti field yang sedang fokus (pertanyaan, jawaban, opsi, atau penjelasan)
 const optionKeys = ['a', 'b', 'c', 'd'] as const
-const mcField = ref<'question' | 'a' | 'b' | 'c' | 'd'>('a')
-const mcFieldLabel = computed(() =>
-  mcField.value === 'question' ? 'Pertanyaan' : `Pilihan ${mcField.value.toUpperCase()}`
-)
-function mcInsert(char: string) {
-  if (mcField.value === 'question') form.value.question_text += char
-  else form.value.options[mcField.value] += char
+type KbField = 'question' | 'answer' | 'a' | 'b' | 'c' | 'd' | 'explanation'
+const kbField = ref<KbField>('question')
+const kbFieldLabel = computed(() => {
+  const f = kbField.value
+  if (f === 'question') return 'Pertanyaan'
+  if (f === 'answer') return 'Jawaban Benar'
+  if (f === 'explanation') return 'Penjelasan'
+  return `Pilihan ${f.toUpperCase()}`
+})
+function kbGet(): string {
+  const f = kbField.value
+  if (f === 'question') return form.value.question_text
+  if (f === 'answer') return form.value.correct_answer
+  if (f === 'explanation') return form.value.explanation
+  return form.value.options[f]
 }
-function mcBackspace() {
-  if (mcField.value === 'question') form.value.question_text = form.value.question_text.slice(0, -1)
-  else form.value.options[mcField.value] = form.value.options[mcField.value].slice(0, -1)
+function kbSet(v: string) {
+  const f = kbField.value
+  if (f === 'question') form.value.question_text = v
+  else if (f === 'answer') form.value.correct_answer = v
+  else if (f === 'explanation') form.value.explanation = v
+  else form.value.options[f] = v
 }
-function mcClear() {
-  if (mcField.value === 'question') form.value.question_text = ''
-  else form.value.options[mcField.value] = ''
-}
+function kbInsert(char: string) { kbSet(kbGet() + char) }
+function kbBackspace() { kbSet(kbGet().slice(0, -1)) }
+function kbClear() { kbSet('') }
 
 const emptyForm = () => ({
   id: null as number | null,
@@ -257,8 +236,7 @@ const form = ref(emptyForm())
 
 function openModal(q?: any) {
   formError.value = null
-  showExplanationKeyboard.value = false
-  mcField.value = 'a'
+  kbField.value = 'question'
   if (q) {
     form.value = {
       id: q.id,
@@ -277,10 +255,29 @@ function openModal(q?: any) {
 
 async function fetchQuestions() {
   loading.value = true
-  const { data } = await api.get('/questions', { params: { type: filterType.value || undefined, difficulty: filterDiff.value || undefined } })
+  const { data } = await api.get('/questions', {
+    params: {
+      type: filterType.value || undefined,
+      difficulty: filterDiff.value || undefined,
+      page: page.value,
+    },
+  })
   questions.value = data.data ?? []
+  lastPage.value  = data.last_page ?? 1
+  total.value     = data.total ?? 0
   loading.value   = false
 }
+
+function goPage(p: number) {
+  page.value = p
+  fetchQuestions()
+}
+
+// Ganti filter → kembali ke halaman 1 lalu muat ulang
+watch([filterType, filterDiff], () => {
+  page.value = 1
+  fetchQuestions()
+})
 
 async function saveQuestion() {
   saving.value  = true
@@ -288,12 +285,14 @@ async function saveQuestion() {
   try {
     const payload: any = { ...form.value }
     if (form.value.type !== 'multiple_choice') delete payload.options
+    const isNew = !form.value.id
     if (form.value.id) {
       await api.put(`/questions/${form.value.id}`, payload)
     } else {
       await api.post('/questions', payload)
     }
     modal.value = false
+    if (isNew) page.value = 1 // soal baru tampil di halaman pertama (urutan terbaru)
     fetchQuestions()
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan soal.'
@@ -305,6 +304,8 @@ async function saveQuestion() {
 async function deleteQuestion(id: number) {
   if (!confirm('Hapus soal ini?')) return
   await api.delete(`/questions/${id}`)
+  // jika item terakhir di halaman ini dihapus, mundur satu halaman
+  if (questions.value.length === 1 && page.value > 1) page.value--
   fetchQuestions()
 }
 

@@ -54,6 +54,8 @@
       </div>
     </div>
 
+    <Pagination :current-page="page" :last-page="lastPage" :total="total" @change="goPage" />
+
     <!-- Modal -->
     <div v-if="modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
@@ -116,14 +118,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import api from '@/api/axios'
+import Pagination from '@/components/common/Pagination.vue'
 
 const teachers  = ref<any[]>([])
 const modal     = ref(false)
 const saving    = ref(false)
 const formError = ref<string | null>(null)
 const search    = ref('')
+const page      = ref(1)
+const lastPage  = ref(1)
+const total     = ref(0)
 
 const emptyForm = () => ({
   id: null as number | null,
@@ -133,9 +139,28 @@ const emptyForm = () => ({
 const form = ref(emptyForm())
 
 async function fetchTeachers() {
-  const { data } = await api.get('/admin/teachers', { params: { search: search.value || undefined } })
+  const { data } = await api.get('/admin/teachers', {
+    params: { search: search.value || undefined, page: page.value },
+  })
   teachers.value = data.data ?? []
+  lastPage.value = data.last_page ?? 1
+  total.value    = data.total ?? 0
 }
+
+function goPage(p: number) {
+  page.value = p
+  fetchTeachers()
+}
+
+// Pencarian: kembali ke halaman 1 lalu muat ulang (debounce 300ms)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    fetchTeachers()
+  }, 300)
+})
 
 function openModal(t?: any) {
   formError.value = null
@@ -149,12 +174,14 @@ async function save() {
   try {
     const payload = { ...form.value }
     if (!payload.password) delete (payload as any).password
+    const isNew = !form.value.id
     if (form.value.id) {
       await api.put(`/admin/teachers/${form.value.id}`, payload)
     } else {
       await api.post('/admin/teachers', payload)
     }
     modal.value = false
+    if (isNew) page.value = 1 // guru baru tampil di halaman pertama (urutan terbaru)
     fetchTeachers()
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan data guru.'
@@ -166,6 +193,8 @@ async function save() {
 async function remove(id: number) {
   if (!confirm('Hapus guru ini?')) return
   await api.delete(`/admin/teachers/${id}`)
+  // jika item terakhir di halaman ini dihapus, mundur satu halaman
+  if (teachers.value.length === 1 && page.value > 1) page.value--
   fetchTeachers()
 }
 
