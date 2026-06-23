@@ -41,7 +41,7 @@
       </div>
 
       <!-- Rarangken -->
-      <div v-if="activeTab === 'rarangken'" class="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+      <div v-if="activeTab === 'rarangken'" class="grid grid-cols-4 sm:grid-cols-7 gap-1.5 gap-y-2">
         <KeyButton
           v-for="r in rarangken"
           :key="r.sunda"
@@ -130,13 +130,23 @@ const vokalMandiri = [
 ]
 
 const rarangken = [
-  { sunda: 'ᮡ', name: 'Panghulu',  latin: '-eu' },
-  { sunda: 'ᮣ', name: 'Panolong',  latin: '-ai' },
-  { sunda: 'ᮤ', name: 'Panyuku',   latin: '-i'  },
-  { sunda: 'ᮥ', name: 'Panyakra',  latin: '-u'  },
-  { sunda: 'ᮨ', name: 'Pangadeg',  latin: '-e'  },
-  { sunda: 'ᮩ', name: 'Pamepet',   latin: '-o'  },
-  { sunda: 'ᮺ', name: 'Pamaéh',    latin: 'mati' },
+  // Rarangken vokal
+  { sunda: 'ᮤ', name: 'Panghulu',   latin: 'i'    },
+  { sunda: 'ᮨ', name: 'Pamepet',    latin: 'e'    },
+  { sunda: 'ᮩ', name: 'Paneuleung', latin: 'eu'   },
+  { sunda: 'ᮦ', name: 'Panéléng',   latin: 'é'    },
+  { sunda: 'ᮥ', name: 'Panyuku',    latin: 'u'    },
+  { sunda: 'ᮧ', name: 'Panolong',   latin: 'o'    },
+  // Rarangken konsonan akhir
+  { sunda: 'ᮁ', name: 'Panglayar',  latin: '+r'   },
+  { sunda: 'ᮀ', name: 'Panyecek',   latin: '+ng'  },
+  { sunda: 'ᮂ', name: 'Pangwisad',  latin: '+h'   },
+  // Rarangken konsonan tengah
+  { sunda: 'ᮢ', name: 'Panyakra',   latin: '+ra'  },
+  { sunda: 'ᮣ', name: 'Panyiku',    latin: '+la'  },
+  { sunda: 'ᮡ', name: 'Pamingkal',  latin: '+ya'  },
+  // Rarangken pematian vokal
+  { sunda: '᮪', name: 'Patén',      latin: 'mati' },
 ]
 
 const angkaSunda = [
