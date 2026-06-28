@@ -90,10 +90,10 @@ class QuizController extends Controller
             'title'             => 'required|string|max:255',
             'description'       => 'nullable|string',
             'duration_minutes'  => 'required|integer|min:1|max:180',
-            'difficulty'        => 'required|in:mudah,sedang,sulit,campuran',
+            'difficulty'        => 'nullable|in:mudah,sedang,sulit,campuran',
             'selection_mode'    => 'required|in:random,manual',
-            'total_questions'   => 'required_if:selection_mode,random|integer|min:1|max:100',
-            'question_ids'      => 'required_if:selection_mode,manual|array|min:1',
+            'total_questions'   => 'required_if:selection_mode,random|nullable|integer|min:1',
+            'question_ids'      => 'required|array|min:1',
             'question_ids.*'    => 'integer|exists:questions,id',
             'shuffle_questions' => 'boolean',
             'shuffle_options'   => 'boolean',
@@ -104,17 +104,11 @@ class QuizController extends Controller
             // Jumlah soal mengikuti banyaknya soal yang dipilih guru
             $validated['total_questions'] = count($validated['question_ids']);
         } else {
-            // Mode random tidak menyimpan daftar soal manual
-            $validated['question_ids'] = null;
-
-            // Pastikan stok soal cukup untuk memenuhi jumlah yang diminta
-            $availableCount = Question::active()
-                ->when($validated['difficulty'] !== 'campuran', fn($q) => $q->where('difficulty', $validated['difficulty']))
-                ->count();
-
-            if ($availableCount < $validated['total_questions']) {
+            // Mode acak: validasi total_questions tidak melebihi pool yang dipilih
+            $poolCount = count($validated['question_ids']);
+            if ($validated['total_questions'] > $poolCount) {
                 return response()->json([
-                    'message' => "Tidak cukup soal. Tersedia: $availableCount soal, diminta: {$validated['total_questions']} soal.",
+                    'message' => "Jumlah soal per siswa ({$validated['total_questions']}) tidak boleh melebihi soal yang dipilih ($poolCount).",
                 ], 422);
             }
         }
@@ -229,9 +223,7 @@ class QuizController extends Controller
             ->where('status', 'in_progress')
             ->firstOrFail();
 
-        $setting = $attempt->quizSetting;
-
-        DB::transaction(function () use ($attempt, $request, $setting) {
+        DB::transaction(function () use ($attempt, $request) {
             $correct = 0;
             $wrong   = 0;
 
@@ -294,6 +286,7 @@ class QuizController extends Controller
         $attempts = QuizAttempt::with('quizSetting')
             ->where('user_id', auth()->id())
             ->where('status', 'completed')
+            ->whereHas('quizSetting')
             ->latest()
             ->paginate(10);
 
@@ -309,6 +302,7 @@ class QuizController extends Controller
     {
         $attempts = QuizAttempt::with(['user', 'quizSetting'])
             ->where('status', 'completed')
+            ->whereHas('quizSetting')
             ->latest('finished_at')
             ->get();
 
@@ -316,6 +310,7 @@ class QuizController extends Controller
             'id'                 => $a->id,
             'quiz_id'            => $a->quiz_setting_id,
             'user_name'          => $a->user?->name,
+            'user_kelas'         => $a->user?->kelas,
             'quiz_title'         => $a->quizSetting?->title,
             'score'              => $a->score,
             'correct_answers'    => $a->correct_answers,
@@ -415,6 +410,7 @@ class QuizController extends Controller
             'id'                 => $a->id,
             'quiz_id'            => $a->quiz_setting_id,
             'user_name'          => $a->user?->name,
+            'user_kelas'         => $a->user?->kelas,
             'quiz_title'         => $a->quizSetting?->title,
             'score'              => $a->score,
             'correct_answers'    => $a->correct_answers,

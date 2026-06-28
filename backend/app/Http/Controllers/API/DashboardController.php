@@ -95,41 +95,86 @@ class DashboardController extends Controller
 
     private function siswaDashboard(User $user): JsonResponse
     {
-        $attempts = QuizAttempt::where('user_id', $user->id)
-            ->where('status', 'completed');
+        $completedAttempts = QuizAttempt::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->whereHas('quizSetting');
 
         $lastAttempt = QuizAttempt::with('quizSetting')
             ->where('user_id', $user->id)
             ->where('status', 'completed')
+            ->whereHas('quizSetting')
             ->latest('finished_at')
             ->first();
 
-        $totalMaterials = Material::published()->count();
+        $totalMaterials     = Material::published()->count();
         $completedMaterials = StudentProgress::where('user_id', $user->id)
             ->where('is_completed', true)
             ->count();
 
+        // ID quiz yang sudah diselesaikan siswa ini (hanya quiz yang masih ada)
+        $completedQuizIds = QuizAttempt::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->whereHas('quizSetting')
+            ->pluck('quiz_setting_id')
+            ->unique();
+
+        // Daftar quiz aktif beserta status selesai/belum
+        $availableQuizzes = QuizSetting::active()
+            ->latest()
+            ->get()
+            ->map(fn($s) => [
+                'id'               => $s->id,
+                'title'            => $s->title,
+                'total_questions'  => $s->total_questions,
+                'duration_minutes' => $s->duration_minutes,
+                'is_completed'     => $completedQuizIds->contains($s->id),
+            ]);
+
+        // Ranking: posisi siswa berdasarkan rata-rata nilai di antara semua siswa
+        $userAvg = round($completedAttempts->avg('score') ?? 0, 1);
+
+        $ranking = null;
+        if ($completedAttempts->count() > 0) {
+            $allAvg = QuizAttempt::where('status', 'completed')
+                ->whereHas('quizSetting')
+                ->selectRaw('user_id, AVG(score) as avg_score')
+                ->groupBy('user_id')
+                ->orderByDesc('avg_score')
+                ->pluck('user_id')
+                ->values();
+
+            $pos = $allAvg->search($user->id);
+            $ranking = $pos !== false ? $pos + 1 : null;
+        }
+
         return response()->json([
             'role' => 'siswa',
             'stats' => [
-                'nilai_terakhir'   => $lastAttempt?->score ?? 0,
-                'quiz_terakhir'    => $lastAttempt?->quizSetting?->title,
-                'rata_nilai'       => round($attempts->avg('score') ?? 0, 1),
-                'total_quiz'       => $attempts->count(),
-                'materi_selesai'   => $completedMaterials,
-                'total_materi'     => $totalMaterials,
-                'progress_persen'  => $totalMaterials > 0
+                'nilai_terakhir'      => $lastAttempt?->score ?? 0,
+                'quiz_terakhir'       => $lastAttempt?->quizSetting?->title,
+                'nilai_tertinggi'     => $completedAttempts->max('score') ?? 0,
+                'rata_nilai'          => $userAvg,
+                'total_quiz'          => $completedAttempts->count(),
+                'total_quiz_tersedia' => $availableQuizzes->count(),
+                'quiz_selesai'        => $completedQuizIds->count(),
+                'materi_selesai'      => $completedMaterials,
+                'total_materi'        => $totalMaterials,
+                'progress_persen'     => $totalMaterials > 0
                     ? round(($completedMaterials / $totalMaterials) * 100, 0)
                     : 0,
+                'ranking'             => $ranking,
             ],
+            'available_quizzes' => $availableQuizzes,
             'recent_attempts' => QuizAttempt::with('quizSetting')
                 ->where('user_id', $user->id)
                 ->where('status', 'completed')
+                ->whereHas('quizSetting')
                 ->latest('finished_at')
                 ->take(5)
                 ->get()
                 ->map(fn($a) => [
-                    'quiz'    => $a->quizSetting->title,
+                    'id'      => $a->id,
+                    'quiz'    => $a->quizSetting?->title ?? '-',
                     'skor'    => $a->score,
                     'benar'   => $a->correct_answers,
                     'salah'   => $a->wrong_answers,

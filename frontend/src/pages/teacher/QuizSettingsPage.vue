@@ -44,10 +44,6 @@
               {{ q.selection_mode === 'manual' ? '✋ Manual' : '🎲 Acak' }}
             </span>
           </div>
-          <div v-if="q.selection_mode !== 'manual'" class="flex justify-between">
-            <span>Kesulitan:</span>
-            <span class="badge text-xs" :class="diffBadge(q.difficulty)">{{ q.difficulty }}</span>
-          </div>
         </div>
 
         <div class="flex gap-2">
@@ -90,14 +86,14 @@
             <div class="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                @click="form.selection_mode = 'random'"
+                @click="switchToRandom"
                 class="p-3 rounded-lg border-2 text-left transition-all"
                 :class="form.selection_mode === 'random'
                   ? 'border-sunda-500 bg-sunda-50'
                   : 'border-gray-200 hover:border-sunda-300'"
               >
                 <p class="font-medium text-sm text-gray-800">🎲 Acak Otomatis</p>
-                <p class="text-xs text-gray-500 mt-0.5">Ambil acak dari bank soal</p>
+                <p class="text-xs text-gray-500 mt-0.5">Pilih pool soal, acak per siswa</p>
               </button>
               <button
                 type="button"
@@ -113,28 +109,31 @@
             </div>
           </div>
 
-          <!-- Mode Acak: jumlah soal + kesulitan -->
-          <div v-if="form.selection_mode === 'random'" class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Soal</label>
-              <input v-model.number="form.total_questions" type="number" min="1" max="100" required class="input-field" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Tingkat Kesulitan</label>
-              <select v-model="form.difficulty" class="input-field">
-                <option value="mudah">Mudah</option>
-                <option value="sedang">Sedang</option>
-                <option value="sulit">Sulit</option>
-                <option value="campuran">Campuran (Semua Level)</option>
-              </select>
-            </div>
+          <!-- Jumlah soal per siswa — hanya untuk mode Acak -->
+          <div v-if="form.selection_mode === 'random'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Soal per Siswa</label>
+            <input
+              v-model.number="form.total_questions"
+              type="number"
+              min="1"
+              :max="form.question_ids.length || 999"
+              required
+              class="input-field"
+              placeholder="Contoh: 10"
+            />
+            <p v-if="form.question_ids.length > 0 && form.total_questions > form.question_ids.length" class="text-xs text-red-500 mt-1">
+              Tidak boleh melebihi jumlah soal yang dipilih ({{ form.question_ids.length }}).
+            </p>
+            <p v-else-if="form.question_ids.length > 0" class="text-xs text-gray-400 mt-1">
+              Setiap siswa mendapat {{ form.total_questions }} soal acak dari {{ form.question_ids.length }} soal di bawah.
+            </p>
           </div>
 
-          <!-- Mode Manual: daftar soal dengan checkbox -->
-          <div v-else>
+          <!-- Pilih soal (kedua mode) -->
+          <div>
             <div class="flex items-center justify-between mb-2">
               <label class="block text-sm font-medium text-gray-700">
-                Pilih Soal
+                {{ form.selection_mode === 'random' ? 'Pool Soal' : 'Pilih Soal' }}
                 <span class="text-sunda-600 font-semibold">({{ form.question_ids.length }} dipilih)</span>
               </label>
               <input
@@ -174,7 +173,14 @@
                 </div>
               </label>
             </div>
-            <p class="text-xs text-gray-400 mt-1">Jumlah soal quiz akan mengikuti banyaknya soal yang dipilih.</p>
+            <p class="text-xs text-gray-400 mt-1">
+              <template v-if="form.selection_mode === 'random'">
+                Sistem mengambil {{ form.total_questions || '...' }} soal acak dari pool ini — tiap siswa bisa dapat soal berbeda.
+              </template>
+              <template v-else>
+                Semua soal yang dipilih akan ditampilkan. Jumlah soal mengikuti banyaknya yang dipilih.
+              </template>
+            </p>
           </div>
 
           <!-- Opsi lain -->
@@ -266,6 +272,11 @@ async function fetchQuestions() {
   }
 }
 
+function switchToRandom() {
+  form.value.selection_mode = 'random'
+  fetchQuestions()
+}
+
 function switchToManual() {
   form.value.selection_mode = 'manual'
   fetchQuestions()
@@ -281,9 +292,10 @@ function openModal(q?: any) {
       question_ids: q.question_ids ?? [],
       selection_mode: q.selection_mode ?? 'random',
     }
-    if (form.value.selection_mode === 'manual') fetchQuestions()
+    fetchQuestions()
   } else {
     form.value = emptyForm()
+    fetchQuestions()
   }
   modal.value = true
 }
@@ -296,9 +308,19 @@ async function fetchSettings() {
 }
 
 async function saveSetting() {
-  if (form.value.selection_mode === 'manual' && form.value.question_ids.length === 0) {
-    formError.value = 'Pilih minimal 1 soal untuk mode manual.'
+  if (form.value.question_ids.length === 0) {
+    formError.value = 'Pilih minimal 1 soal.'
     return
+  }
+  if (form.value.selection_mode === 'random') {
+    if (!form.value.total_questions || form.value.total_questions < 1) {
+      formError.value = 'Jumlah soal per siswa minimal 1.'
+      return
+    }
+    if (form.value.total_questions > form.value.question_ids.length) {
+      formError.value = `Jumlah soal (${form.value.total_questions}) tidak boleh melebihi soal yang dipilih (${form.value.question_ids.length}).`
+      return
+    }
   }
   saving.value = true
   formError.value = null

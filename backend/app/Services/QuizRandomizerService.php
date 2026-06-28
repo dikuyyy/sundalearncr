@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Question;
 use App\Models\QuizSetting;
-use Illuminate\Support\Collection;
 
 /**
  * QuizRandomizerService
@@ -72,39 +71,28 @@ class QuizRandomizerService
      */
     public function getRandomizedQuestions(QuizSetting $setting): array
     {
-        // Mode MANUAL: gunakan daftar soal yang dipilih guru
-        if ($setting->selection_mode === 'manual' && !empty($setting->question_ids)) {
-            // Ambil hanya soal yang masih aktif, jaga urutan sesuai pilihan guru
-            $selected = Question::active()
-                ->whereIn('id', $setting->question_ids)
-                ->pluck('id')
-                ->toArray();
+        // Kedua mode menggunakan question_ids yang dipilih guru sebagai pool.
+        // Ambil hanya soal yang masih aktif dari pool tersebut.
+        $activeIds = Question::active()
+            ->whereIn('id', $setting->question_ids ?? [])
+            ->pluck('id')
+            ->toArray();
 
-            $questions = array_values(array_intersect($setting->question_ids, $selected));
+        // Pertahankan urutan sesuai pilihan guru, filter hanya yang aktif
+        $pool = array_values(array_intersect($setting->question_ids ?? [], $activeIds));
 
-            if ($setting->shuffle_questions) {
-                $questions = $this->fisherYatesShuffle($questions);
-            }
-
-            return $questions;
+        if ($setting->selection_mode === 'random') {
+            // Mode ACAK: acak pool lalu ambil subset sejumlah total_questions
+            $pool = $this->fisherYatesShuffle($pool);
+            return array_slice($pool, 0, $setting->total_questions);
         }
 
-        // Mode RANDOM: ambil soal berdasarkan tingkat kesulitan
-        $query = Question::active();
-
-        if ($setting->difficulty !== 'campuran') {
-            $query->where('difficulty', $setting->difficulty);
-        }
-
-        $questions = $query->pluck('id')->toArray();
-
-        // Acak menggunakan Fisher-Yates Shuffle
+        // Mode MANUAL: tampilkan semua soal yang dipilih, urutan sesuai pilihan guru
         if ($setting->shuffle_questions) {
-            $questions = $this->fisherYatesShuffle($questions);
+            $pool = $this->fisherYatesShuffle($pool);
         }
 
-        // Potong sesuai jumlah soal yang ditentukan guru
-        return array_slice($questions, 0, $setting->total_questions);
+        return $pool;
     }
 
     /**

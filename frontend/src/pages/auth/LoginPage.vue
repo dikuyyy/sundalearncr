@@ -57,6 +57,11 @@
             <span v-else>Masuk ke SundaLearn</span>
           </button>
 
+          <p class="text-center text-sm text-gray-500">
+            Belum punya akun?
+            <RouterLink to="/register" class="text-sunda-600 hover:text-sunda-800 font-medium">Daftar sebagai siswa</RouterLink>
+          </p>
+
           <!-- Demo Accounts -->
           <div class="border-t pt-5">
             <p class="text-xs text-gray-500 mb-3 text-center">Akun Demo:</p>

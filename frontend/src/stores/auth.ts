@@ -10,6 +10,7 @@ export interface User {
   role: 'admin' | 'guru' | 'siswa'
   role_display: string
   nisn: string | null
+  kelas: string | null
   nip: string | null
   phone: string | null
   is_active: boolean
@@ -23,6 +24,23 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin    = computed(() => user.value?.role === 'admin')
   const isGuru     = computed(() => user.value?.role === 'guru')
   const isSiswa    = computed(() => user.value?.role === 'siswa')
+
+  async function register(payload: {
+    name: string
+    email: string
+    password: string
+    password_confirmation: string
+    nisn?: string
+    kelas?: string
+    phone?: string
+    gender?: string
+  }) {
+    const { data } = await api.post('/auth/register', payload)
+    token.value = data.token
+    user.value  = data.user
+    localStorage.setItem('auth_token', data.token)
+    return data
+  }
 
   async function login(email: string, password: string) {
     const { data } = await api.post('/auth/login', { email, password })
@@ -70,6 +88,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user, token,
     isLoggedIn, isAdmin, isGuru, isSiswa,
-    login, logout, fetchUser, updateProfile, changePassword,
+    register, login, logout, fetchUser, updateProfile, changePassword,
   }
 })

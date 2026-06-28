@@ -13,6 +13,16 @@
       </button>
     </div>
 
+    <!-- Filter Kelas -->
+    <div v-if="selectedQuiz" class="mb-4 flex items-center gap-3">
+      <label class="text-sm font-medium text-gray-700">Filter Kelas:</label>
+      <select v-model="filterKelas" class="input-field w-48">
+        <option value="">Semua Kelas</option>
+        <option v-for="k in availableKelas" :key="k" :value="k">{{ k }}</option>
+      </select>
+      <span v-if="filterKelas" class="text-xs text-gray-400">{{ filteredResults.length }} siswa</span>
+    </div>
+
     <!-- Stats (quiz terpilih) -->
     <div v-if="selectedQuiz" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <StatCard label="Total Peserta"   :value="filteredResults.length"        icon="👥" color="blue" />
@@ -29,6 +39,7 @@
             <tr>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Peringkat</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Siswa</th>
+              <th class="text-left px-4 py-3 text-gray-500 font-medium">Kelas</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Nilai</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Benar</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Salah</th>
@@ -37,7 +48,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="loading">
-              <td colspan="6" class="text-center py-8 text-gray-400">Memuat...</td>
+              <td colspan="7" class="text-center py-8 text-gray-400">Memuat...</td>
             </tr>
             <tr
               v-for="(r, i) in filteredResults"
@@ -48,6 +59,7 @@
                 <span class="font-bold text-base">{{ rankLabel(i) }}</span>
               </td>
               <td class="px-4 py-3 font-medium text-gray-800">{{ r.user_name }}</td>
+              <td class="px-4 py-3 text-gray-500 text-sm">{{ r.user_kelas || '-' }}</td>
               <td class="px-4 py-3">
                 <span
                   class="font-bold text-base"
@@ -61,7 +73,7 @@
               <td class="px-4 py-3 text-gray-500">{{ formatDuration(r.time_spent_seconds) }}</td>
             </tr>
             <tr v-if="!loading && filteredResults.length === 0">
-              <td colspan="6" class="text-center py-8 text-gray-400">Belum ada hasil untuk quiz ini.</td>
+              <td colspan="7" class="text-center py-8 text-gray-400">Belum ada hasil untuk quiz ini.</td>
             </tr>
           </tbody>
         </table>
@@ -112,6 +124,7 @@ const results = ref<any[]>([])
 const loading = ref(true)
 const showPicker     = ref(false)
 const selectedQuizId = ref<number | null>(null)
+const filterKelas    = ref('')
 
 // Daftar quiz unik yang memiliki hasil (untuk popup)
 const quizzes = computed(() => {
@@ -126,10 +139,22 @@ const quizzes = computed(() => {
 
 const selectedQuiz = computed(() => quizzes.value.find((q) => q.id === selectedQuizId.value) ?? null)
 
+// Kelas unik yang ada di hasil quiz terpilih (untuk dropdown filter)
+const availableKelas = computed(() => {
+  const set = new Set<string>()
+  for (const r of results.value) {
+    if (r.quiz_id === selectedQuizId.value && r.user_kelas) set.add(r.user_kelas)
+  }
+  return [...set].sort()
+})
+
 // Hasil quiz terpilih, diurutkan dari nilai tertinggi (ranking)
 const filteredResults = computed(() =>
   results.value
-    .filter((r) => r.quiz_id === selectedQuizId.value)
+    .filter((r) =>
+      r.quiz_id === selectedQuizId.value &&
+      (!filterKelas.value || r.user_kelas === filterKelas.value)
+    )
     .sort((a, b) => b.score - a.score || a.time_spent_seconds - b.time_spent_seconds)
 )
 
@@ -147,7 +172,8 @@ function rankLabel(i: number) {
 
 function selectQuiz(id: number) {
   selectedQuizId.value = id
-  showPicker.value = false
+  filterKelas.value    = ''
+  showPicker.value     = false
 }
 
 function formatDuration(s: number) {

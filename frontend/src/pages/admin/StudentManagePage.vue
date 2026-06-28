@@ -8,8 +8,9 @@
       <button @click="openModal()" class="btn-primary">+ Tambah Siswa</button>
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4 flex flex-wrap gap-3">
       <input v-model="search" class="input-field max-w-xs" placeholder="🔍 Cari nama atau NISN..." />
+      <input v-model="filterKelas" class="input-field w-40" placeholder="🏫 Filter kelas..." />
     </div>
 
     <div class="card overflow-hidden p-0">
@@ -20,6 +21,7 @@
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Nama</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Email</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">NISN</th>
+              <th class="text-left px-4 py-3 text-gray-500 font-medium">Kelas</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
               <th class="text-left px-4 py-3 text-gray-500 font-medium">Aksi</th>
             </tr>
@@ -29,6 +31,7 @@
               <td class="px-4 py-3 font-medium text-gray-800">{{ s.name }}</td>
               <td class="px-4 py-3 text-gray-600">{{ s.email }}</td>
               <td class="px-4 py-3 text-gray-500">{{ s.nisn || '-' }}</td>
+              <td class="px-4 py-3 text-gray-500">{{ s.kelas || '-' }}</td>
               <td class="px-4 py-3">
                 <span class="badge text-xs" :class="s.is_active ? 'badge-green' : 'badge-red'">
                   {{ s.is_active ? 'Aktif' : 'Nonaktif' }}
@@ -74,9 +77,13 @@
               <input v-model="form.nisn" class="input-field" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">No. HP</label>
-              <input v-model="form.phone" class="input-field" />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+              <input v-model="form.kelas" class="input-field" placeholder="Contoh: X IPA 1" maxlength="50" />
             </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">No. HP</label>
+            <input v-model="form.phone" class="input-field" />
           </div>
           <div v-if="form.id">
             <label class="flex items-center gap-2 cursor-pointer">
@@ -102,44 +109,48 @@ import { ref, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import Pagination from '@/components/common/Pagination.vue'
 
-const students  = ref<any[]>([])
-const modal     = ref(false)
-const saving    = ref(false)
-const formError = ref<string | null>(null)
-const search    = ref('')
-const page      = ref(1)
-const lastPage  = ref(1)
-const total     = ref(0)
+const students    = ref<any[]>([])
+const modal       = ref(false)
+const saving      = ref(false)
+const formError   = ref<string | null>(null)
+const search      = ref('')
+const filterKelas = ref('')
+const page        = ref(1)
+const lastPage    = ref(1)
+const total       = ref(0)
 
 const emptyForm = () => ({
   id: null as number | null,
-  name: '', email: '', password: '', nisn: '', phone: '', is_active: true,
+  name: '', email: '', password: '', nisn: '', kelas: '', phone: '', is_active: true,
 })
 const form = ref(emptyForm())
 
 async function fetchStudents() {
   const { data } = await api.get('/admin/students', {
-    params: { search: search.value || undefined, page: page.value },
+    params: {
+      search: search.value || undefined,
+      kelas:  filterKelas.value || undefined,
+      page:   page.value,
+    },
   })
   students.value = data.data ?? []
   lastPage.value = data.last_page ?? 1
   total.value    = data.total ?? 0
 }
 
+
 function goPage(p: number) {
   page.value = p
   fetchStudents()
 }
 
-// Pencarian: kembali ke halaman 1 lalu muat ulang (debounce 300ms)
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-watch(search, () => {
+function debouncedFetch() {
   if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    page.value = 1
-    fetchStudents()
-  }, 300)
-})
+  searchTimer = setTimeout(() => { page.value = 1; fetchStudents() }, 300)
+}
+watch(search, debouncedFetch)
+watch(filterKelas, debouncedFetch)
 
 function openModal(s?: any) {
   formError.value = null

@@ -10,6 +10,11 @@
       <div v-for="i in 4" :key="i" class="card animate-pulse h-24 bg-gray-100" />
     </div>
 
+    <!-- Error -->
+    <div v-else-if="error" class="card bg-red-50 border border-red-200 text-red-700 text-sm">
+      {{ error }}
+    </div>
+
     <!-- Admin Dashboard -->
     <template v-else-if="auth.isAdmin && data">
       <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -104,48 +109,51 @@
 
     <!-- Siswa Dashboard -->
     <template v-else-if="auth.isSiswa && data">
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Nilai Terakhir"  :value="`${data.stats.nilai_terakhir}%`" icon="🎯" color="blue" />
-        <StatCard label="Rata-rata Nilai" :value="`${data.stats.rata_nilai}%`"     icon="📊" color="green" />
-        <StatCard label="Total Quiz"      :value="data.stats.total_quiz"            icon="✏️" color="yellow" />
-        <StatCard label="Materi Selesai"  :value="`${data.stats.materi_selesai}/${data.stats.total_materi}`" icon="📚" color="purple" />
+      <!-- Stats -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard label="Rata-rata Nilai"  :value="`${data.stats.rata_nilai}%`"      icon="📊" color="blue" />
+        <StatCard label="Nilai Tertinggi"  :value="`${data.stats.nilai_tertinggi}%`" icon="🏆" color="yellow" />
+        <StatCard label="Quiz Selesai"     :value="`${data.stats.quiz_selesai} / ${data.stats.total_quiz_tersedia}`" icon="✏️" color="green" />
+        <StatCard label="Ranking"          :value="data.stats.ranking ? `#${data.stats.ranking}` : '-'" icon="🏅" color="purple" />
       </div>
 
-      <!-- Progress Belajar -->
+      <!-- Progress Materi -->
       <div class="card mb-6">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold text-gray-800">Progress Belajar</h3>
-          <span class="text-sunda-600 font-bold">{{ data.stats.progress_persen }}%</span>
+          <div>
+            <h3 class="font-semibold text-gray-800">Progress Belajar Materi</h3>
+            <p class="text-xs text-gray-500 mt-0.5">{{ data.stats.materi_selesai }} dari {{ data.stats.total_materi }} materi selesai</p>
+          </div>
+          <span class="text-2xl font-bold text-sunda-600">{{ data.stats.progress_persen }}%</span>
         </div>
-        <div class="bg-gray-100 rounded-full h-4">
+        <div class="bg-gray-100 rounded-full h-3">
           <div
-            class="bg-gradient-to-r from-sunda-400 to-sunda-600 rounded-full h-4 transition-all duration-700"
+            class="bg-gradient-to-r from-sunda-400 to-sunda-600 rounded-full h-3 transition-all duration-700"
             :style="{ width: data.stats.progress_persen + '%' }"
           />
         </div>
-        <p class="text-sm text-gray-500 mt-2">
-          {{ data.stats.materi_selesai }} dari {{ data.stats.total_materi }} materi selesai dipelajari
-        </p>
+        <p v-if="data.stats.total_materi === 0" class="text-xs text-gray-400 mt-2">Belum ada materi yang tersedia.</p>
+        <p v-else-if="data.stats.progress_persen === 100" class="text-xs text-green-600 font-medium mt-2">Semua materi selesai dipelajari!</p>
       </div>
 
       <!-- Quick Actions -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <RouterLink to="/materi" class="card flex items-center gap-4 hover:border-sunda-300 hover:shadow-md transition-all border-2 border-transparent cursor-pointer">
-          <div class="w-12 h-12 bg-sunda-100 rounded-xl flex items-center justify-center text-2xl">📚</div>
+        <RouterLink to="/materi" class="card flex items-center gap-4 hover:border-sunda-300 hover:shadow-md transition-all border-2 border-transparent">
+          <div class="w-12 h-12 bg-sunda-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">📚</div>
           <div>
             <p class="font-semibold text-gray-800">Belajar Materi</p>
             <p class="text-xs text-gray-500">Pelajari aksara Sunda</p>
           </div>
         </RouterLink>
-        <RouterLink to="/transliterasi" class="card flex items-center gap-4 hover:border-sunda-300 hover:shadow-md transition-all border-2 border-transparent cursor-pointer">
-          <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">🔄</div>
+        <RouterLink to="/transliterasi" class="card flex items-center gap-4 hover:border-sunda-300 hover:shadow-md transition-all border-2 border-transparent">
+          <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🔄</div>
           <div>
             <p class="font-semibold text-gray-800">Transliterasi</p>
-            <p class="text-xs text-gray-500">Konversi teks</p>
+            <p class="text-xs text-gray-500">Konversi teks Latin ↔ Sunda</p>
           </div>
         </RouterLink>
-        <RouterLink to="/quiz" class="card flex items-center gap-4 hover:border-sunda-300 hover:shadow-md transition-all border-2 border-transparent cursor-pointer">
-          <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl">✏️</div>
+        <RouterLink to="/quiz" class="card flex items-center gap-4 hover:border-sunda-300 hover:shadow-md transition-all border-2 border-transparent">
+          <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">✏️</div>
           <div>
             <p class="font-semibold text-gray-800">Ikuti Quiz</p>
             <p class="text-xs text-gray-500">Uji kemampuanmu</p>
@@ -153,25 +161,65 @@
         </RouterLink>
       </div>
 
-      <!-- Riwayat Terbaru -->
-      <div class="card">
-        <h3 class="font-semibold text-gray-800 mb-4">Riwayat Quiz Terakhir</h3>
-        <div class="space-y-2">
-          <div
-            v-for="a in data.recent_attempts"
-            :key="a.tanggal + a.quiz"
-            class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-          >
-            <div>
-              <p class="font-medium text-sm text-gray-800">{{ a.quiz }}</p>
-              <p class="text-xs text-gray-500">{{ a.tanggal }} · {{ a.benar }}/{{ a.benar + a.salah }} benar</p>
-            </div>
-            <span
-              class="text-xl font-bold"
-              :class="a.skor >= 70 ? 'text-sunda-600' : 'text-red-500'"
-            >{{ a.skor }}%</span>
+      <!-- Quiz Tersedia & Riwayat -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Daftar Quiz -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800">Quiz Tersedia</h3>
+            <RouterLink to="/quiz" class="text-xs text-sunda-600 hover:text-sunda-800 font-medium">Lihat Semua →</RouterLink>
           </div>
-          <p v-if="!data.recent_attempts?.length" class="text-gray-400 text-sm text-center py-4">Belum ada riwayat quiz.</p>
+          <div v-if="data.available_quizzes?.length" class="space-y-2">
+            <div
+              v-for="q in data.available_quizzes.slice(0, 5)"
+              :key="q.id"
+              class="flex items-center justify-between p-3 rounded-lg border"
+              :class="q.is_completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'"
+            >
+              <div class="flex-1 min-w-0 mr-3">
+                <p class="text-sm font-medium text-gray-800 truncate">{{ q.title }}</p>
+                <p class="text-xs text-gray-500">{{ q.total_questions }} soal · {{ q.duration_minutes }} menit</p>
+              </div>
+              <span
+                v-if="q.is_completed"
+                class="flex-shrink-0 text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full"
+              >Selesai</span>
+              <RouterLink
+                v-else
+                :to="`/quiz/${q.id}/mulai`"
+                class="flex-shrink-0 text-xs bg-sunda-600 text-white font-semibold px-3 py-1 rounded-full hover:bg-sunda-700 transition-colors"
+              >Mulai</RouterLink>
+            </div>
+          </div>
+          <p v-else class="text-gray-400 text-sm text-center py-6">Belum ada quiz tersedia.</p>
+        </div>
+
+        <!-- Riwayat Terbaru -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800">Riwayat Quiz Terakhir</h3>
+            <RouterLink to="/quiz/riwayat" class="text-xs text-sunda-600 hover:text-sunda-800 font-medium">Lihat Semua →</RouterLink>
+          </div>
+          <div v-if="data.recent_attempts?.length" class="space-y-2">
+            <div
+              v-for="a in data.recent_attempts"
+              :key="a.id"
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
+              <div class="flex-1 min-w-0 mr-3">
+                <p class="font-medium text-sm text-gray-800 truncate">{{ a.quiz }}</p>
+                <p class="text-xs text-gray-500">{{ a.tanggal }} · {{ a.benar }}/{{ a.benar + a.salah }} benar</p>
+              </div>
+              <span
+                class="text-lg font-bold flex-shrink-0"
+                :class="a.skor >= 70 ? 'text-sunda-600' : 'text-red-500'"
+              >{{ a.skor }}%</span>
+            </div>
+          </div>
+          <div v-else class="text-center py-6">
+            <p class="text-gray-400 text-sm">Belum ada riwayat quiz.</p>
+            <RouterLink to="/quiz" class="mt-2 inline-block text-sm text-sunda-600 hover:text-sunda-800 font-medium">Mulai quiz pertamamu →</RouterLink>
+          </div>
         </div>
       </div>
     </template>
@@ -188,11 +236,14 @@ import StatCard from '@/components/common/StatCard.vue'
 const auth    = useAuthStore()
 const data    = ref<any>(null)
 const loading = ref(true)
+const error   = ref<string | null>(null)
 
 onMounted(async () => {
   try {
     const { data: res } = await api.get('/dashboard')
     data.value = res
+  } catch (e: any) {
+    error.value = e.response?.data?.message ?? 'Gagal memuat dashboard.'
   } finally {
     loading.value = false
   }

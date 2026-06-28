@@ -129,6 +129,7 @@ class AdminController extends Controller
             ->when($request->search, fn($q, $s) => $q->where(function ($q) use ($s) {
                 $q->where('name', 'like', "%$s%")->orWhere('nisn', 'like', "%$s%");
             }))
+            ->when($request->kelas, fn($q, $k) => $q->where('kelas', $k))
             ->paginate(10);
 
         return response()->json($students);
@@ -144,6 +145,7 @@ class AdminController extends Controller
             'email'    => 'required|email|unique:users,email',
             'password' => ['required', Password::min(8)],
             'nisn'     => 'nullable|string|max:20',
+            'kelas'    => 'nullable|string|max:50',
             'phone'    => 'nullable|string|max:20',
             'gender'   => 'nullable|in:L,P',
         ]);
@@ -168,6 +170,7 @@ class AdminController extends Controller
             'name'      => 'required|string|max:255',
             'email'     => 'required|email|unique:users,email,' . $id,
             'nisn'      => 'nullable|string|max:20',
+            'kelas'     => 'nullable|string|max:50',
             'phone'     => 'nullable|string|max:20',
             'gender'    => 'nullable|in:L,P',
             'is_active' => 'boolean',

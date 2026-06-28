@@ -14,6 +14,45 @@ use Illuminate\Validation\Rules\Password;
 class AuthController extends Controller
 {
     /**
+     * POST /api/auth/register
+     * Siswa mendaftar sendiri.
+     */
+    public function register(Request $request): JsonResponse
+    {
+        $request->validate([
+            'name'                  => 'required|string|max:255',
+            'email'                 => 'required|email|unique:users,email',
+            'password'              => ['required', 'confirmed', Password::min(8)],
+            'nisn'                  => 'nullable|string|max:20',
+            'kelas'                 => 'nullable|string|max:50',
+            'phone'                 => 'nullable|string|max:20',
+            'gender'                => 'nullable|in:L,P',
+        ]);
+
+        $siswaRole = Role::where('name', 'siswa')->firstOrFail();
+
+        $user = User::create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => $request->password,
+            'nisn'     => $request->nisn,
+            'kelas'    => $request->kelas,
+            'phone'    => $request->phone,
+            'gender'   => $request->gender,
+            'role_id'  => $siswaRole->id,
+            'is_active' => true,
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Registrasi berhasil. Selamat datang di SundaLearn!',
+            'token'   => $token,
+            'user'    => $this->formatUser($user->load('role')),
+        ], 201);
+    }
+
+    /**
      * POST /api/login
      */
     public function login(Request $request): JsonResponse
@@ -122,6 +161,7 @@ class AuthController extends Controller
             'role'     => $user->role->name ?? null,
             'role_display' => $user->role->display_name ?? null,
             'nisn'     => $user->nisn,
+            'kelas'    => $user->kelas,
             'nip'      => $user->nip,
             'phone'    => $user->phone,
             'address'  => $user->address,
