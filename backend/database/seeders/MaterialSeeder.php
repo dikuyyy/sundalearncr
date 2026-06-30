@@ -64,20 +64,31 @@ class MaterialSeeder extends Seeder
             ]
         );
 
+        // Hapus item lama agar data rarangken selalu sesuai referensi terbaru
+        $rarangken->items()->delete();
+
         $rarangkenItems = [
-            ['sunda_script' => 'ᮡ', 'latin_name' => 'Panghulu',  'pronunciation' => '-eu/-i pepet', 'description' => 'Mengubah vokal inheren a menjadi eu/i sunda', 'examples' => [['latin' => 'leuleumbeut', 'note' => 'bunyi eu']]],
-            ['sunda_script' => 'ᮤ', 'latin_name' => 'Panyuku',   'pronunciation' => '-i',           'description' => 'Mengubah vokal inheren a menjadi i',         'examples' => [['latin' => 'bisi', 'note' => 'bi-si']]],
-            ['sunda_script' => 'ᮥ', 'latin_name' => 'Panyakra',  'pronunciation' => '-u',           'description' => 'Mengubah vokal inheren a menjadi u',         'examples' => [['latin' => 'buku', 'note' => 'bu-ku']]],
-            ['sunda_script' => 'ᮨ', 'latin_name' => 'Pangadeg',  'pronunciation' => '-e',           'description' => 'Mengubah vokal inheren a menjadi e/é',       'examples' => [['latin' => 'bere', 'note' => 'be-re']]],
-            ['sunda_script' => 'ᮩ', 'latin_name' => 'Panolong',  'pronunciation' => '-o',           'description' => 'Mengubah vokal inheren a menjadi o',         'examples' => [['latin' => 'bojo', 'note' => 'bo-jo']]],
-            ['sunda_script' => 'ᮺ', 'latin_name' => 'Pamaéh',    'pronunciation' => '-',            'description' => 'Mematikan vokal (konsonan akhir/mati)',       'examples' => [['latin' => 'bab', 'note' => 'b-a-b']]],
+            // ── Rarangken vokal ──
+            ['sunda_script' => 'ᮤ', 'latin_name' => 'Panghulu',   'pronunciation' => 'i',    'description' => 'Mengubah vokal inheren konsonan menjadi i',                                      'examples' => [['sunda' => 'ᮘᮤᮞᮤ',   'latin' => 'bisi',   'note' => 'bi-si']]],
+            ['sunda_script' => 'ᮨ', 'latin_name' => 'Pamepet',    'pronunciation' => 'e',    'description' => 'Mengubah vokal inheren konsonan menjadi e pepet (schwa)',                        'examples' => [['sunda' => 'ᮘᮨᮛᮨ',   'latin' => 'bere',   'note' => 'be-re']]],
+            ['sunda_script' => 'ᮩ', 'latin_name' => 'Paneuleung', 'pronunciation' => 'eu',   'description' => 'Mengubah vokal inheren konsonan menjadi eu (bunyi khas Sunda)',                 'examples' => [['sunda' => 'ᮜᮩᮝᮤᮂ', 'latin' => 'leuwih', 'note' => 'leu-wih']]],
+            ['sunda_script' => 'ᮦ', 'latin_name' => 'Panéléng',   'pronunciation' => 'é',    'description' => 'Mengubah vokal inheren konsonan menjadi é (e taling, seperti pada kata "enak")', 'examples' => [['sunda' => 'ᮓᮦᮞ',    'latin' => 'désa',   'note' => 'dé-sa']]],
+            ['sunda_script' => 'ᮥ', 'latin_name' => 'Panyuku',    'pronunciation' => 'u',    'description' => 'Mengubah vokal inheren konsonan menjadi u',                                      'examples' => [['sunda' => 'ᮘᮥᮊᮥ',   'latin' => 'buku',   'note' => 'bu-ku']]],
+            ['sunda_script' => 'ᮧ', 'latin_name' => 'Panolong',   'pronunciation' => 'o',    'description' => 'Mengubah vokal inheren konsonan menjadi o',                                      'examples' => [['sunda' => 'ᮘᮧᮓᮧ',   'latin' => 'bodo',   'note' => 'bo-do']]],
+            // ── Rarangken konsonan akhir (panyekat) ──
+            ['sunda_script' => 'ᮁ', 'latin_name' => 'Panglayar',  'pronunciation' => '+r',   'description' => 'Rarangken penutup suku kata yang menambahkan bunyi r di akhir',                  'examples' => [['sunda' => 'ᮞᮘᮁ',    'latin' => 'sabar',  'note' => 'sa-bar']]],
+            ['sunda_script' => 'ᮀ', 'latin_name' => 'Panyecek',   'pronunciation' => '+ng',  'description' => 'Rarangken penutup suku kata yang menambahkan bunyi ng di akhir',                 'examples' => [['sunda' => 'ᮅᮛᮀ',    'latin' => 'urang',  'note' => 'u-rang']]],
+            ['sunda_script' => 'ᮂ', 'latin_name' => 'Pangwisad',  'pronunciation' => '+h',   'description' => 'Rarangken penutup suku kata yang menambahkan bunyi h di akhir',                  'examples' => [['sunda' => 'ᮒᮔᮂ',    'latin' => 'tanah',  'note' => 'ta-nah']]],
+            // ── Rarangken konsonan tengah (gugus konsonan) ──
+            ['sunda_script' => 'ᮢ', 'latin_name' => 'Panyakra',   'pronunciation' => '+ra',  'description' => 'Rarangken gugus konsonan yang menambahkan bunyi ra setelah konsonan (subscript ra)', 'examples' => [['sunda' => 'ᮊᮢᮙ',  'latin' => 'krama',  'note' => 'kra-ma']]],
+            ['sunda_script' => 'ᮣ', 'latin_name' => 'Panyiku',    'pronunciation' => '+la',  'description' => 'Rarangken gugus konsonan yang menambahkan bunyi la setelah konsonan (subscript la)', 'examples' => [['sunda' => 'ᮘᮣᮧᮊ᮪', 'latin' => 'blok',   'note' => 'blok']]],
+            ['sunda_script' => 'ᮡ', 'latin_name' => 'Pamingkal',  'pronunciation' => '+ya',  'description' => 'Rarangken gugus konsonan yang menambahkan bunyi ya setelah konsonan (subscript ya)', 'examples' => [['sunda' => 'ᮞᮡᮛᮒ᮪', 'latin' => 'syarat',  'note' => 'sya-rat']]],
+            // ── Rarangken pematian vokal ──
+            ['sunda_script' => '᮪', 'latin_name' => 'Patén',       'pronunciation' => 'mati', 'description' => 'Mematikan vokal konsonan sehingga tidak bervokal (digunakan di akhir kata)',   'examples' => [['sunda' => 'ᮊᮤᮒᮘ᮪',  'latin' => 'kitab',  'note' => 'ki-tab']]],
         ];
 
         foreach ($rarangkenItems as $i => $item) {
-            $rarangken->items()->firstOrCreate(
-                ['latin_name' => $item['latin_name']],
-                [...$item, 'order' => $i + 1]
-            );
+            $rarangken->items()->create([...$item, 'order' => $i + 1]);
         }
 
         // ─── ANGKA SUNDA ───
